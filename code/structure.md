@@ -26,7 +26,7 @@ AVFormatContext主要存储视音频封装格式中包含的信息；AVInputForm
 
 
 
-![结构体关系图](/Users/苏宵涵/思维导图/课程自学/音视频:流媒体开发/ffmpeg/FFmpeg_Cbook/images/结构体关系图.jpeg)
+![结构体关系图](../images/结构体关系图.jpeg)
 
 
 
