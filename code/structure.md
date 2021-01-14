@@ -1,3 +1,5 @@
+
+
 # FFmpeg structure
 
 ## FFmpeg关键结构体之间的关系
@@ -35,13 +37,54 @@ AVFormatContext主要存储视音频封装格式中包含的信息；AVInputForm
 
 
 * [AVFrame](#AVFrame)
-* AVPacket
-* AVFormatContext
+
+* [AVPacket](#AVPacket)
+
+* AVPicture
+
+* [AVFormatContext](./struct/AVFormatContext)
+
+* AVInputFormat    iformat
+
 * AVCodecContext
+
 * AVIOContext
+
 * AVCodec
+
 * AVStream
+
 * [AVBuffer](#AVBuffer)
+
+* [AVBufferRef](#AVBufferRef)
+
+  
+
+> ### AVPicture
+
+```c
+typedef struct AVPicture {
+    uint8_t *data[AV_NUM_DATA_POINTERS];    ///< pointers to the image data planes
+    int linesize[AV_NUM_DATA_POINTERS];     ///< number of bytes per line
+} AVPicture;
+```
+
+ 分析这个结构体最重要的一点就是：AVFrame和AVPicture的关系，AVPicture结构体的成员就是AVFrame结构体的两个成员，这样在一些函数中就可以直接通过AVPicture结构体指针去访问AVFrame结构体变量。可以进行**类型转换**。
+
+相关函数
+
+```c
+avpicture_fill
+```
+
+https://www.cnblogs.com/nanqiang/p/10439011.html
+
+https://blog.csdn.net/loveyaqin1990/article/details/21282455   待整理
+
+
+
+ AVFrame始终指向一块内存数据，这块内存数据有可能由avcodec_decode_video（）函数内部负责去申请，然后在解码结束之后自动释 放。这也说明了为什么在yuv转rgb的时候需要自己去申请一块内存空间并将其绑定在AVFrame上，有可能因为
+sws_scale（）并不会自动帮用户去申请内存空间，所以为了获取转化之后的RGB数据则需要自动去申请内存使用。
 
 
 
@@ -631,7 +674,7 @@ AVBufferRef *buf[AV_NUM_DATA_POINTERS];
 
 此帧的数据可以由AVBufferRef管理，AVBufferRef提供[AVBuffer](#AVBuffer)引用机制。这里涉及到**缓冲区引用计数**概念：
 AVBuffer是FFmpeg中很常用的一种缓冲区，缓冲区使用引用计数(reference-counted)机制。
-AVBufferRef则对AVBuffer缓冲区提供了一层封装，最主要的是作引用计数处理，实现了一种安全机制。用户不应直接访问AVBuffer，应通过AVBufferRef来访问AVBuffer，以保证安全。
+AVBufferRef则对AVBuffer缓冲区提供了一层封装，最主要的是作引用计数处理，实现了一种安全机制。**用户不应直接访问AVBuffer，应通过AVBufferRef来访问AVBuffer，以保证安全**。
 FFmpeg中很多基础的数据结构都包含了AVBufferRef成员，来间接使用AVBuffer缓冲区。
 相关内容参考“[FFmpeg数据结构AVBuffer](https://www.cnblogs.com/leisure_chn/p/10399048.html)”
 ????帧的数据缓冲区AVBuffer就是前面的data成员，用户不应直接使用data成员，应通过buf成员间接使用data成员。那extended_data又是做什么的呢????
@@ -650,7 +693,254 @@ https://blog.csdn.net/leixiaohua1020/article/details/14214577
 
 
 
+> ### <span id="AVPacket">AVPacket</span>s
+
+**code:**avcodec.h
+
+```c
+typedef struct AVPacket {
+    /**
+     * A reference to the reference-counted buffer where the packet data is
+     * stored.
+     * May be NULL, then the packet data is not reference-counted.
+     */
+    AVBufferRef *buf;
+    /**
+     * Presentation timestamp in AVStream->time_base units; the time at which
+     * the decompressed packet will be presented to the user.
+     * Can be AV_NOPTS_VALUE if it is not stored in the file.
+     * pts MUST be larger or equal to dts as presentation cannot happen before
+     * decompression, unless one wants to view hex dumps. Some formats misuse
+     * the terms dts and pts/cts to mean something different. Such timestamps
+     * must be converted to true pts/dts before they are stored in AVPacket.
+     */
+    int64_t pts;
+    /**
+     * Decompression timestamp in AVStream->time_base units; the time at which
+     * the packet is decompressed.
+     * Can be AV_NOPTS_VALUE if it is not stored in the file.
+     */
+    int64_t dts;
+    uint8_t *data;
+    int   size;
+    int   stream_index;
+    /**
+     * A combination of AV_PKT_FLAG values
+     */
+    int   flags;
+    /**
+     * Additional packet data that can be provided by the container.
+     * Packet can contain several types of side information.
+     */
+    AVPacketSideData *side_data;
+    int side_data_elems;
+
+    /**
+     * Duration of this packet in AVStream->time_base units, 0 if unknown.
+     * Equals next_pts - this_pts in presentation order.
+     */
+    int64_t duration;
+
+    int64_t pos;                            ///< byte position in stream, -1 if unknown
+
+#if FF_API_CONVERGENCE_DURATION
+    /**
+     * @deprecated Same as the duration field, but as int64_t. This was required
+     * for Matroska subtitles, whose duration values could overflow when the
+     * duration field was still an int.
+     */
+    attribute_deprecated
+    int64_t convergence_duration;
+#endif
+} AVPacket;
+
+/*
+uint8_t *data：指向保存压缩数据的指针，这就是AVPacket的实际数据;
+
+例如对于H.264来说。1个AVPacket的data通常对应一个NAL。
+
+注意：在这里只是对应，而不是一模一样。他们之间有微小的差别：使用FFMPEG类库分离出多媒体文件中的H.264码流
+
+因此在使用FFMPEG进行视音频处理的时候，常常可以将得到的AVPacket的data数据直接写成文件，从而得到视音频的码流文件。
+
+int   size：data的大小
+
+int64_t pts：显示时间戳
+
+int64_t dts：解码时间戳
+
+int   stream_index：标识该AVPacket所属的视频/音频流。
+*/
+```
+
+
+
+**相关函数**
+
+操作AVPacket的函数大约有30个，主要分为：AVPacket的创建初始化，AVPacket中的data数据管理（clone，free,copy），AVPacket中的side_data数据管理。
+
+
+
+参考链接
+
+https://www.jianshu.com/p/bb6d3905907e
+
+
+
 > ### <span id="AVBuffer">AVBuffer</span>
 
+**code:**libavutil/buffer_internal.h
+
+```c
+struct AVBuffer {
+    uint8_t *data; /**< data described by this buffer */
+    int      size; /**< size of data in bytes */
+
+    /**
+     *  number of existing AVBufferRef instances referring to this buffer
+     */
+    atomic_uint refcount;
+
+    /**
+     * a callback for freeing the data
+     */
+    void (*free)(void *opaque, uint8_t *data);
+
+    /**
+     * an opaque pointer, to be used by the freeing callback
+     */
+    void *opaque;
+
+    /**
+     * A combination of AV_BUFFER_FLAG_*
+     */
+    int flags;
+
+    /**
+     * A combination of BUFFER_FLAG_*
+     */
+    int flags_internal;
+};
+/*
+data: 缓冲区地址
+size: 缓冲区大小
+refcount: 引用计数值
+free: 用于释放缓冲区内存的回调函数
+opaque: 提供给free回调函数的参数
+flags: 缓冲区标志
+*/
+```
+
+
+
+AVBuffer是FFmpeg中很常用的一种缓冲区，缓冲区使用**引用计数(reference-counted)机制**。
+
+AVBufferRef则对AVBuffer缓冲区提供了一层封装(wrapper)，最主要的是作引用计数处理，实现了一种安全机制。<span style="border-bottom:2px dashed yellow;">**用户不应直接访问AVBuffer，应通过AVBufferRef来访问AVBuffer**</span>，以保证安全。
+
+参考链接
+
 https://www.cnblogs.com/leisure_chn/p/10399048.html
+
+https://www.cnblogs.com/tocy/p/ffmpeg-libavutil-avbuffer-imp.html
+
+
+
+> ### <span id="AVBufferRef">AVBufferRef</span>
+
+**code:**libavutil/buffer.h
+
+```c
+/**
+ * A reference to a data buffer.
+ *
+ * The size of this struct is not a part of the public ABI and it is not meant
+ * to be allocated directly.
+ */
+typedef struct AVBufferRef {
+    AVBuffer *buffer;
+      /**
+     * The data buffer. It is considered writable if and only if
+     * this is the only reference to the buffer, in which case
+     * av_buffer_is_writable() returns 1.
+     */
+    uint8_t *data;
+      /**
+     * Size of data in bytes.
+     */
+    int      size;
+} AVBufferRef;
+/*
+buffer: AVBuffer
+data: 缓冲区地址，实际等于buffer->data
+size: 缓冲区大小，实际等于buffer->size
+*/
+```
+
+
+
+**相关函数**
+
+AVBufferRef可以用来管理引用计数的，AVBufferRef有两个函数：av_packet_ref() 和av_packet_unref()增加和减少引用计数的
+
+avutil中主要提供了以下几个创建AVBuffer的接口：
+
+```c
+AVBufferRef *av_buffer_alloc(int size); 
+
+AVBufferRef *av_buffer_allocz(int size); 
+
+AVBufferRef *av_buffer_create(uint8_t *data, int size,void (*free)(void *opaque, uint8_t *data), void *opaque, int flags); 
+
+int av_buffer_realloc(AVBufferRef **buf, int size);
+```
+
+demo
+
+```c
+extern "C" {
+#include "libavutil/buffer.h"
+}
+#include <iostream>
+using namespace std;
+ 
+void av_buffer_default_free_2(void *opaque, uint8_t *data)
+{
+	free(data);
+}
+ 
+int main()
+{
+	const int size = 100;
+	//需要被保护的数据data
+	uint8_t *data = (uint8_t *)malloc(size);
+	//用ref给保护起来
+	AVBufferRef * buf = av_buffer_create(data, size + 64,
+		av_buffer_default_free_2, NULL, 0);
+ 
+	//
+	//加一次引用
+	AVBufferRef* br = av_buffer_ref(buf);
+	printf("ref count %d,%d\n", av_buffer_get_ref_count(br), av_buffer_get_ref_count(buf));
+ 
+	//又加一次引用
+	AVBufferRef* br2 = av_buffer_ref(br);
+	printf("ref count %d,%d\n", av_buffer_get_ref_count(br), av_buffer_get_ref_count(buf));
+ 
+	//开始解引用
+	av_buffer_unref(&br);
+	printf("ref count %d\n",  av_buffer_get_ref_count(buf));
+	av_buffer_unref(&br2);
+	printf("ref count %d\n", av_buffer_get_ref_count(buf));
+	av_buffer_unref(&buf);
+	if (NULL == buf)
+	{
+		printf("buf is released\n");
+	}
+	return 1;
+}
+```
+
+
+
+**参考链接**
 

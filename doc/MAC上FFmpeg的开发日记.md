@@ -28,7 +28,7 @@ SwsContext
 
 
 
-指针数组
+#### 指针数组
 
 
 
@@ -41,5 +41,12 @@ int *ptr[MAX];
 
 [Readme2](./hello)
 
+### const* 和 *const
+
+https://blog.csdn.net/qq_32623363/article/details/87813484
 
 
+
+指向常量的常指针，既不能改地址，也不能改值
+
+​    const int * const a = &b; 
