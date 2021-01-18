@@ -1,6 +1,6 @@
 
 
-[TOC]
+
 
 # ff_tutorial01
 
@@ -226,8 +226,6 @@ open_input:avformat_open_input
 
 利用ffmpeg进行图像数据格式的转换以及图片的缩放应用中，主要用到了swscale.h文件中的三个函数，分别是：
 
-[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
-
 ```c
   struct SwsContext *sws_getContext(int srcW, int srcH, enum AVPixelFormat srcFormat,
                                int dstW, int dstH, enum AVPixelFormat dstFormat,
@@ -304,5 +302,5 @@ avpicture_fill(
 
 [FFmpeg avpicture_fill](https://www.cnblogs.com/my_life/articles/6932568.html)
 
-
+[An ffmpeg and SDL Tutorial](http://dranger.com/ffmpeg/tutorial01.html)
 
