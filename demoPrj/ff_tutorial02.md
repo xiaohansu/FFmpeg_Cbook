@@ -186,5 +186,9 @@ int main(int argc, char *argv[])
 
 
 
+**SDL线程处理**
+
+>SDL_CreateThread():SDL线程创建。
+
 ![流程图](../images/SDL视频显示的流程图.png)
 

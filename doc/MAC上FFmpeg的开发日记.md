@@ -47,6 +47,18 @@ https://blog.csdn.net/qq_32623363/article/details/87813484
 
 
 
+比如`int const*a;`，实际上可以看成是`int const (*a)`，这表示指针`a`所指向的地址可以变，但是所指向的那个值不能变。
+而`int *const a;`，可以看成`int* (const a);`，我们都知道a的值其实是一个地址，这就表示`a`所保存的地址是不可以变的，但是这个地址对应的值是可以变的。
+
 指向常量的常指针，既不能改地址，也不能改值
 
 ​    const int * const a = &b; 
+
+
+
+http://c.biancheng.net/view/228.html
+
+### 函数指针的作用
+
+
+
